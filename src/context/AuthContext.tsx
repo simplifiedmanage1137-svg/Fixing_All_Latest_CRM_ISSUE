@@ -847,6 +847,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           getUserInFlightRef.current = null;
           await supabase.auth.getSession();
 
+          // Check if account is active before proceeding
+          try {
+            const profileCheck = await fetch("/api/profile", {
+              method: "GET",
+              credentials: "include",
+              cache: "no-store",
+            });
+            if (profileCheck.status === 403) {
+              const profileData = await profileCheck.json() as { error?: string };
+              await supabase.auth.signOut({ scope: "local" });
+              setState((current) => ({ ...current, isLoading: false, isInitialized: true }));
+              return {
+                error: new Error(
+                  profileData.error ?? "Your account has been deactivated. Contact your Team Leader."
+                ),
+              };
+            }
+          } catch {
+            // Non-fatal — proceed with normal sync
+          }
+
           const confirmedSession =
             data.session?.user?.id === data.user.id
               ? data.session

@@ -35,7 +35,7 @@ import {
   InboxOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "@/context/AuthContext";
-import { downloadCsv, downloadAgentExcel } from "@/lib/leadsExport";
+import { downloadAgentExcel } from "@/lib/leadsExport";
 import { LeadDrawerContent, LEAD_DRAWER_WIDTH, LEAD_DRAWER_BODY_STYLE } from "@/components/Leads/LeadDrawerContent";
 import { getLeadTableColumns } from "@/components/Leads/LeadTableColumns";
 import { buildLeadPayload, leadToFormValues } from "@/lib/leadPayload";
@@ -253,10 +253,15 @@ export default function AgentCampaignDetailPage() {
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to create lead");
+      if (!res.ok) throw new Error(json.error || "Failed to save lead");
 
-      message.success("Lead added. Add another below or close when done.");
-      form.resetFields();
+      if (json.updated) {
+        message.success("Lead already existed — updated successfully.");
+        closeLeadDrawer();
+      } else {
+        message.success("Lead added. Add another below or close when done.");
+        form.resetFields();
+      }
 
       const leadsRes = await fetch(`/api/agent/campaigns/${id}/leads`, {
         credentials: "include",
@@ -268,7 +273,7 @@ export default function AgentCampaignDetailPage() {
       if (isValidationError) {
         message.warning("Please fill all required fields");
       } else {
-        message.error(err instanceof Error ? err.message : "Failed to create lead");
+        message.error(err instanceof Error ? err.message : "Failed to save lead");
       }
     } finally {
       setCreatingLead(false);
@@ -649,25 +654,25 @@ export default function AgentCampaignDetailPage() {
             <Button type="primary" icon={<PlusOutlined />} onClick={openLeadDrawer}>
               Add Lead
             </Button>
-            <Button
-              icon={<DownloadOutlined />}
-              onClick={() => {
-                const toExport = filteredLeads.length > 0 ? filteredLeads : leads;
-                if (toExport.length === 0) message.warning("No leads to export");
-                else {
-                  downloadCsv(
-                    toExport,
-                    `leads-${
-                      campaign?.name?.replace(/\s+/g, "-") ?? "export"
-                    }-${new Date().toISOString().slice(0, 10)}.csv`
-                  );
-                  message.success(`Exported ${toExport.length} leads`);
-                }
-              }}
-              disabled={leads.length === 0}
-            >
-              Export
-            </Button>
+          <Button
+  icon={<DownloadOutlined />}
+  onClick={() => {
+    const toExport = filteredLeads.length > 0 ? filteredLeads : leads;
+
+    if (toExport.length === 0) {
+      message.warning("No leads to export");
+    } else {
+      downloadAgentExcel(
+        toExport,
+        `my-leads-${new Date().toISOString().slice(0, 10)}.xlsx`
+      );
+      message.success(`Exported ${toExport.length} leads`);
+    }
+  }}
+  disabled={leads.length === 0}
+>
+  Export
+</Button>
             <Dropdown
               trigger={["hover"]}
               menu={{

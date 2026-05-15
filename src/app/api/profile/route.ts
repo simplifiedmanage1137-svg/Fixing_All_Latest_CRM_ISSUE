@@ -12,7 +12,7 @@ export async function GET() {
     .from("users")
     .select(`
       id, full_name, email, phone, employee_id, agent_code,
-      date_of_birth, avatar_url, joining_date, status, created_at,
+      date_of_birth, avatar_url, joining_date, status, is_active, created_at,
       reporting_manager_id, designation, department, employment_type
     `)
     .eq("id", user.id)
@@ -33,12 +33,21 @@ export async function GET() {
     avatar_url: string | null;
     joining_date: string | null;
     status: string;
+    is_active: boolean | null;
     created_at: string;
     reporting_manager_id: string | null;
     designation: string | null;
     department: string | null;
     employment_type: string | null;
   } | null;
+
+  // Block inactive accounts
+  if (profile?.is_active === false) {
+    return NextResponse.json(
+      { error: "Your account has been deactivated. Contact your Team Leader." },
+      { status: 403 }
+    );
+  }
 
   // Fetch roles
   const { data: roleRows } = await supabase

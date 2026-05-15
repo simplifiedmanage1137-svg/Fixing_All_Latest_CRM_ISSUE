@@ -75,13 +75,13 @@ export async function POST(
     for (let i = 0; i < rawLeads.length; i++) {
       const row = rawLeads[i] as Record<string, unknown>;
 
-      // Explicitly ignore any id or lead_id coming from file – Lead ID is system generated
+      // Explicitly ignore any id coming from file – but KEEP lead_id for upsert
       delete row.id;
-      delete row.lead_id;
       delete row.created_by;
       delete row.created_by_name;
 
       // Normalize core identification fields
+      const lead_id = normalizeString(row.lead_id);
       const first_name = normalizeString(row.first_name);
       const last_name = normalizeString(row.last_name);
       const name = normalizeString(row.name);
@@ -103,7 +103,85 @@ export async function POST(
         continue;
       }
 
-      // Duplicate lead check based on same keys as single-lead create
+      // ── Upsert by lead_id ─────────────────────────────────────────────────
+      if (lead_id) {
+        const { data: existingByLeadId } = await supabase
+          .from("leads")
+          .select("id")
+          .eq("organization_id", orgId)
+          .eq("campaign_id", campaignId)
+          .eq("lead_id", lead_id)
+          .maybeSingle();
+
+        if (existingByLeadId) {
+          const updatePayload: Record<string, unknown> = {
+            name: derivedName || null,
+            first_name, last_name,
+            salutation: row.salutation ?? null,
+            company_name, phone, email, domain,
+            direct_number: row.direct_number ?? null,
+            company_number: row.company_number ?? null,
+            phone_number_link: row.phone_number_link ?? null,
+            job_title: row.job_title ?? null,
+            job_level: row.job_level ?? null,
+            department: row.department ?? null,
+            job_function: row.job_function ?? null,
+            job_title_link: row.job_title_link ?? null,
+            tenurity: row.tenurity ?? null,
+            vv_status: row.vv_status ?? null,
+            email_status: row.email_status ?? null,
+            ev_tool: row.ev_tool ?? null,
+            address: row.address ?? null,
+            city: row.city ?? null,
+            state: row.state ?? null,
+            country: row.country ?? null,
+            zip_code: row.zip_code ?? null,
+            employee_size: row.employee_size ?? null,
+            see_all_employees: row.see_all_employees ?? null,
+            industry: row.industry ?? null,
+            employee_size_link: row.employee_size_link ?? null,
+            company_website_link: row.company_website_link ?? null,
+            revenue_range: row.revenue_range ?? null,
+            revenue_link: row.revenue_link ?? null,
+            sic_code: row.sic_code ?? null,
+            sic_code_link: row.sic_code_link ?? null,
+            naics_code: row.naics_code ?? null,
+            naics_code_link: row.naics_code_link ?? null,
+            founded_years: row.founded_years != null ? Number(row.founded_years) : null,
+            founded_years_link: row.founded_years_link ?? null,
+            contact_linkedin_url: row.contact_linkedin_url ?? null,
+            company_linkedin_url: row.company_linkedin_url ?? null,
+            scored: row.scored ?? null,
+            appointment: row.appointment ?? null,
+            lead_tagging: row.lead_tagging ?? null,
+            ra_comment: row.ra_comment ?? null,
+            special_comments: row.special_comments ?? null,
+            call_back: row.call_back ?? null,
+            call_notes: row.call_notes ?? null,
+            lead_disposition: row.lead_disposition ?? null,
+            followup_date: row.followup_date ?? null,
+            notes: row.notes ?? null,
+            ...(typeof row.status === "string" && row.status.length > 0 ? { status: row.status } : {}),
+          };
+
+          const { error: updateError } = await supabase
+            .from("leads")
+            .update(updatePayload as never)
+            .eq("id", (existingByLeadId as { id: string }).id)
+            .eq("campaign_id", campaignId)
+            .eq("organization_id", orgId);
+
+          if (updateError) {
+            errors.push(`Row ${i + 1}: ${updateError.message}`);
+          } else {
+            created++; // count updates in the same total
+          }
+          continue;
+        }
+      }
+      // ── End upsert by lead_id ─────────────────────────────────────────────────
+
+      // Duplicate check by identity fields
       if (
         first_name &&
         last_name &&
@@ -129,13 +207,8 @@ export async function POST(
         }
 
         if (duplicateLeads && duplicateLeads.length > 0) {
-          const existing = duplicateLeads[0] as {
-            id: string;
-            lead_id: string | null;
-          };
-          errors.push(
-            `Row ${i + 1}: Duplicate lead (${existing.lead_id ?? existing.id})`
-          );
+          const existing = duplicateLeads[0] as { id: string; lead_id: string | null };
+          errors.push(`Row ${i + 1}: Duplicate lead (${existing.lead_id ?? existing.id})`);
           continue;
         }
       }
