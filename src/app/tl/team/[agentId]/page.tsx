@@ -393,7 +393,7 @@ export default function AgentDetailsPage() {
               <div style={{ background: "#f9f9f9", borderRadius: 8, padding: "14px 16px" }}>
                 <Text strong style={{ display: "block", marginBottom: 4 }}>Change Password</Text>
                 <Text type="secondary" style={{ fontSize: 13 }}>
-                  Set a new password for this agent's account.
+                  Set a new password for this agent&apos;s account.
                 </Text>
                 <div style={{ marginTop: 12 }}>
                   <Button

@@ -56,8 +56,8 @@ export default function TLTeamPage() {
   });
 
   const statsData = stats.data;
-  const campaignsList = campaigns.data?.campaigns ?? [];
-  const agentsList = agentsQuery.data?.agents ?? [];
+  const campaignsList = useMemo(() => campaigns.data?.campaigns ?? [], [campaigns.data]);
+  const agentsList = useMemo(() => agentsQuery.data?.agents ?? [], [agentsQuery.data]);
 
   // ── Summary cards ─────────────────────────────────────────────────────────
   const summaryCards = useMemo(() => {
