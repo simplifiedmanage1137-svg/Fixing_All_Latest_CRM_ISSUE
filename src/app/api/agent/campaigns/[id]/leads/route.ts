@@ -195,6 +195,7 @@ export async function POST(
 
     const body = await request.json();
     const {
+      lead_id: incomingLeadId,
       name,
       first_name,
       last_name,
@@ -282,8 +283,107 @@ export async function POST(
       );
     }
 
-    // Duplicate lead check for Agent users based on
-    // first_name, last_name, email, company_name, and domain
+    // ── Upsert by lead_id ────────────────────────────────────────────────────
+    // If the agent submits a lead_id that already exists in this campaign,
+    // update that lead instead of creating a duplicate.
+    const normalizedLeadId = normalizeString(incomingLeadId);
+    if (normalizedLeadId) {
+      const { data: existingByLeadId } = await supabase
+        .from("leads")
+        .select("id, lead_id")
+        .eq("organization_id", orgId)
+        .eq("campaign_id", campaignId)
+        .eq("lead_id", normalizedLeadId)
+        .maybeSingle();
+
+      if (existingByLeadId) {
+        // Lead with this lead_id already exists — update it
+        const updatePayload: Record<string, unknown> = {
+          name: derivedName || null,
+          first_name: normalizedFirstName || null,
+          last_name: normalizedLastName || null,
+          salutation: salutation || null,
+          company_name: normalizedCompanyName || null,
+          phone: phone || null,
+          email: normalizedEmail || null,
+          domain: normalizedDomain || null,
+          direct_number: direct_number || null,
+          company_number: company_number || null,
+          phone_number_link: phone_number_link || null,
+          job_title: job_title || null,
+          job_level: job_level || null,
+          department: department || null,
+          job_function: job_function || null,
+          job_title_link: job_title_link || null,
+          tenurity: tenurity || null,
+          vv_status: vv_status || null,
+          email_status: email_status || null,
+          ev_tool: ev_tool || null,
+          address: address || null,
+          city: city || null,
+          state: state || null,
+          country: country || null,
+          zip_code: zip_code || null,
+          employee_size: employee_size || null,
+          see_all_employees: see_all_employees || null,
+          industry: industry || null,
+          employee_size_link: employee_size_link || null,
+          company_website_link: company_website_link || null,
+          revenue_range: revenue_range || null,
+          revenue_link: revenue_link || null,
+          sic_code: sic_code || null,
+          sic_code_link: sic_code_link || null,
+          naics_code: naics_code || null,
+          naics_code_link: naics_code_link || null,
+          founded_years: founded_years ?? null,
+          founded_years_link: founded_years_link || null,
+          contact_linkedin_url: contact_linkedin_url || null,
+          company_linkedin_url: company_linkedin_url || null,
+          scored: scored || null,
+          appointment: appointment || null,
+          lead_tagging: lead_tagging || null,
+          ra_comment: ra_comment || null,
+          special_comments: special_comments || null,
+          call_back: call_back || null,
+          call_notes: call_notes || null,
+          primary_reason: primary_reason || null,
+          secondary_reason: secondary_reason || null,
+          qa_comments: qa_comments || null,
+          cq1: cq1 || null,
+          cq2: cq2 || null,
+          cq3: cq3 || null,
+          cq4: cq4 || null,
+          cq5: cq5 || null,
+          audit_date: audit_date || null,
+          qa_name: qa_name || null,
+          asset_title: asset_title || null,
+          lead_disposition: lead_disposition || null,
+          followup_date: followup_date || null,
+          notes: notes || null,
+          ...(typeof status === "string" && status.length > 0 ? { status } : {}),
+        };
+
+        const { error: updateError } = await supabase
+          .from("leads")
+          .update(updatePayload as never)
+          .eq("id", (existingByLeadId as { id: string }).id)
+          .eq("campaign_id", campaignId)
+          .eq("organization_id", orgId);
+
+        if (updateError) {
+          return NextResponse.json({ error: updateError.message }, { status: 500 });
+        }
+
+        return NextResponse.json({
+          lead_id: normalizedLeadId,
+          id: (existingByLeadId as { id: string }).id,
+          updated: true,
+        });
+      }
+    }
+    // ── End upsert by lead_id ─────────────────────────────────────────────────
+
+    // Duplicate check by identity fields (first_name + last_name + email + company + domain)
     if (
       normalizedFirstName &&
       normalizedLastName &&
@@ -304,10 +404,7 @@ export async function POST(
         .limit(1);
 
       if (duplicateError) {
-        return NextResponse.json(
-          { error: duplicateError.message },
-          { status: 500 }
-        );
+        return NextResponse.json({ error: duplicateError.message }, { status: 500 });
       }
 
       if (duplicateLeads && duplicateLeads.length > 0) {

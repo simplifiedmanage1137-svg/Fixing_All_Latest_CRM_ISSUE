@@ -36,6 +36,7 @@ export async function GET() {
     avatar_url: string | null;
     joining_date: string | null;
     status: string;
+    is_active: boolean | null;
     created_at: string;
     reporting_manager_id: string | null;
     designation: string | null;
@@ -43,6 +44,14 @@ export async function GET() {
     employment_type: string | null;
     organization_id: string | null;
   } | null;
+
+  // Block inactive accounts
+  if (profile?.is_active === false) {
+    return NextResponse.json(
+      { error: "Your account has been deactivated. Contact your Team Leader." },
+      { status: 403 }
+    );
+  }
 
   // Fetch roles
   const { data: roleRows } = await supabase

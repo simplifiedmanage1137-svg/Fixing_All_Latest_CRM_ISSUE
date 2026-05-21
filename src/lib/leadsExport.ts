@@ -79,8 +79,7 @@ const CSV_COLUMNS: { key: keyof Lead | string; header: string }[] = [
   { key: "notes", header: "notes" },
   { key: "created_by", header: "created_by" },
   { key: "created_by_name", header: "created_by_name" },
-  { key: "created_at", header: "created_at" },
-  { key: "updated_at", header: "updated_at" },
+  
 ];
 
 const AGENT_EXPORT_COLUMNS = CSV_COLUMNS.filter(

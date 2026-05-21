@@ -263,10 +263,15 @@ export default function AgentCampaignDetailPage() {
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to create lead");
+      if (!res.ok) throw new Error(json.error || "Failed to save lead");
 
-      message.success("Lead added. Add another below or close when done.");
-      form.resetFields();
+      if (json.updated) {
+        message.success("Lead already existed — updated successfully.");
+        closeLeadDrawer();
+      } else {
+        message.success("Lead added. Add another below or close when done.");
+        form.resetFields();
+      }
 
       const leadsRes = await fetch(`/api/agent/campaigns/${id}/leads`, {
         credentials: "include",
@@ -278,7 +283,7 @@ export default function AgentCampaignDetailPage() {
       if (isValidationError) {
         message.warning("Please fill all required fields");
       } else {
-        message.error(err instanceof Error ? err.message : "Failed to create lead");
+        message.error(err instanceof Error ? err.message : "Failed to save lead");
       }
     } finally {
       setCreatingLead(false);
@@ -691,6 +696,7 @@ export default function AgentCampaignDetailPage() {
             <Button type="primary" icon={<PlusOutlined />} onClick={openLeadDrawer}>
               Add Lead
             </Button>
+<<<<<<< HEAD
             <Button
               icon={<DownloadOutlined />}
               onClick={() => {
@@ -710,6 +716,27 @@ export default function AgentCampaignDetailPage() {
             >
               Export
             </Button>
+=======
+          <Button
+  icon={<DownloadOutlined />}
+  onClick={() => {
+    const toExport = filteredLeads.length > 0 ? filteredLeads : leads;
+
+    if (toExport.length === 0) {
+      message.warning("No leads to export");
+    } else {
+      downloadAgentExcel(
+        toExport,
+        `my-leads-${new Date().toISOString().slice(0, 10)}.xlsx`
+      );
+      message.success(`Exported ${toExport.length} leads`);
+    }
+  }}
+  disabled={leads.length === 0}
+>
+  Export
+</Button>
+>>>>>>> 6a635abed126122f678137f596208ec8b6e035ed
             <Dropdown
               trigger={["hover"]}
               menu={{
