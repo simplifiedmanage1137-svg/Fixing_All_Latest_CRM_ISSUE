@@ -9,6 +9,7 @@ import { ArrowLeftOutlined, FileOutlined, DownloadOutlined, ReloadOutlined, Sear
 import { ExpandableText, renderExpandableOverviewValue } from "@/components/ExpandableText";
 import { campaignHeaderDisplayCode } from "@/lib/campaign-display";
 import { getLeadTableColumns } from "@/components/Leads/LeadTableColumns";
+import { downloadExcel } from "@/lib/leadsExport";
 import type { Lead } from "@/types/lead.types";
 import dayjs from "dayjs";
 
@@ -349,14 +350,28 @@ export default function DCCampaignDetailPage() {
         style={{ borderRadius: 8, border: "1px solid #f0f0f0", boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}
         styles={{ body: { padding: "24px 28px" } }}
         extra={
-          <Input
-            prefix={<SearchOutlined style={{ color: "#8c8c8c" }} />}
-            placeholder="Search leads…"
-            value={leadSearch}
-            onChange={(e) => setLeadSearch(e.target.value)}
-            allowClear
-            style={{ width: 220 }}
-          />
+          <Space>
+            <Input
+              prefix={<SearchOutlined style={{ color: "#8c8c8c" }} />}
+              placeholder="Search leads…"
+              value={leadSearch}
+              onChange={(e) => setLeadSearch(e.target.value)}
+              allowClear
+              style={{ width: 220 }}
+            />
+            <Button
+              icon={<DownloadOutlined />}
+              disabled={leads.length === 0}
+              onClick={() =>
+                downloadExcel(
+                  leads as Lead[],
+                  `leads-${campaign.name.replace(/\s+/g, "-")}-${dayjs().format("YYYY-MM-DD")}.xlsx`
+                )
+              }
+            >
+              Export
+            </Button>
+          </Space>
         }
       >
         <Text type="secondary" style={{ fontSize: 13, display: "block", marginBottom: 12 }}>

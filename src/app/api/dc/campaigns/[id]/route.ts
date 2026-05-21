@@ -63,11 +63,10 @@ export async function GET(
         .order("created_at", { ascending: false }),
     ]);
 
-    if (campaignResult.error || !campaignResult.data) {
+    const { data: campaign, error: campaignError } = campaignResult;
+    if (campaignError || !campaign) {
       return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
     }
-
-    const campaign = campaignResult.data;
 
     // Generate signed URLs for files in parallel
     type FileRow = { id: string; file_name: string; file_path: string; file_size: number | null; mime_type: string | null; created_at: string };
